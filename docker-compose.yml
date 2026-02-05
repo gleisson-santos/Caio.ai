@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # ⚡ Sistema Nervoso: Fila de Mensagens Rápida
+  redis:
+    image: redis:alpine
+    container_name: caio_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secure_password}
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - caio_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secure_password}", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 🤖 O Cérebro: Loop de Pensamento e Ação
+  core:
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    container_name: caio_core
+    restart: unless-stopped
+    environment:
+      # Conexão agora aponta para o Supabase (definido no .env)
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./core:/app
+    networks:
+      - caio_network
+
+networks:
+  caio_network:
+    driver: bridge

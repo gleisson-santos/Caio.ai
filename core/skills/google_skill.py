@@ -1,0 +1,210 @@
+import os.path
+import base64
+from email.mime.text import MIMEText
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from loguru import logger
+import datetime
+
+# Escopos necessários
+SCOPES = [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/gmail.modify' # Permite ler, enviar e deletar
+]
+
+class GoogleSkill:
+    def __init__(self, credentials_path="credentials.json", token_path="token.json"):
+        self.creds = None
+        self.credentials_path = credentials_path
+        self.token_path = token_path
+        self.service_calendar = None
+        self.service_gmail = None
+        
+        self._authenticate()
+
+    def _authenticate(self):
+        """Gerencia o ciclo de vida de autenticação (OAuth2)."""
+        # Hack: Se mudarmos escopos, o token antigo pode falhar. 
+        # Idealmente deletaríamos o token.json se os scopes mudarem, 
+        # mas aqui vamos confiar que se falhar a auth, o usuário deleta ou reautenticamos.
+        
+        if os.path.exists(self.token_path):
+            try:
+                self.creds = Credentials.from_authorized_user_file(self.token_path, SCOPES)
+            except Exception:
+                logger.warning("Token inválido ou escopos mudaram.")
+                self.creds = None
+            
+        # Se não houver credenciais ou forem inválidas
+        if not self.creds or not self.creds.valid:
+            if self.creds and self.creds.expired and self.creds.refresh_token:
+                try:
+                    self.creds.refresh(Request())
+                except Exception as e:
+                    logger.warning(f"Erro ao atualizar token: {e}. Tentando novo login.")
+                    self.creds = None
+            
+            if not self.creds:
+                if not os.path.exists(self.credentials_path):
+                    logger.error(f"❌ Arquivo '{self.credentials_path}' não encontrado! Baixe o 'OAuth Client ID' (JSON) no Google Cloud Console e salve na pasta 'core'.")
+                    return
+
+                # Remove token antigo se existir para forçar nova criação com escopos corretos
+                if os.path.exists(self.token_path):
+                    os.remove(self.token_path)
+
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    self.credentials_path, SCOPES)
+                # Isso abrirá uma janela no navegador do usuário
+                self.creds = flow.run_local_server(port=0)
+                
+            # Salvar token para próximas execuções
+            with open(self.token_path, 'w') as token:
+                token.write(self.creds.to_json())
+        
+        # Inicializar Serviços
+        try:
+            self.service_calendar = build('calendar', 'v3', credentials=self.creds)
+            self.service_gmail = build('gmail', 'v1', credentials=self.creds)
+            logger.success("✅ Conectado ao Google Calendar e Gmail!")
+        except Exception as e:
+            logger.error(f"Erro ao conectar serviços Google: {e}")
+
+    # === CALENDAR ===
+    def list_upcoming_events(self, max_results=10):
+        """Lista os próximos eventos formatados."""
+        if not self.service_calendar:
+            return "⚠️ Serviço de Calendário não disponível."
+
+        try:
+            now = datetime.datetime.utcnow().isoformat() + 'Z' 
+            events_result = self.service_calendar.events().list(
+                calendarId='primary', timeMin=now,
+                maxResults=max_results, singleEvents=True,
+                orderBy='startTime').execute()
+            events = events_result.get('items', [])
+
+            if not events:
+                return "📅 **Agenda Tranquila:** Nenhum compromisso futuro encontrado."
+
+            result_text = "📅 **Agenda do Google:**\n\n"
+            for event in events:
+                start = event['start'].get('dateTime', event['start'].get('date'))
+                # Formatar data se for ISO (2026-02-05T14:00:00-03:00)
+                try:
+                    # Tenta parsear para deixar bonito
+                    dt = datetime.datetime.fromisoformat(start)
+                    start_fmt = dt.strftime('%d/%m às %H:%M')
+                    # Se for dia todo (não tem hora), ajusta
+                    if len(start) == 10: # YYYY-MM-DD
+                        start_fmt = dt.strftime('%d/%m (Dia todo)')
+                except:
+                    start_fmt = start
+
+                result_text += f"🗓️ *{start_fmt}* — {event['summary']}\n"
+            
+            return result_text
+
+        except HttpError as error:
+            logger.error(f"Erro na API do Calendar: {error}")
+            return f"❌ Erro ao buscar eventos: {error}"
+
+    def create_event(self, summary, start_datetime_iso, end_datetime_iso=None, description=""):
+        if not self.service_calendar: return False, "Serviço Google não autenticado."
+        if not end_datetime_iso:
+            try:
+                dt_start = datetime.datetime.fromisoformat(start_datetime_iso)
+                dt_end = dt_start + datetime.timedelta(hours=1)
+                end_datetime_iso = dt_end.isoformat()
+            except ValueError: return False, "Formato de data inválido. Use ISO 8601."
+        event = {'summary': summary, 'description': description,
+            'start': {'dateTime': start_datetime_iso}, 'end': {'dateTime': end_datetime_iso}}
+        try:
+            event = self.service_calendar.events().insert(calendarId='primary', body=event).execute()
+            return True, f"✅ Evento criado: {event.get('htmlLink')}"
+        except HttpError as error: return False, str(error)
+
+    def delete_event(self, event_id):
+        if not self.service_calendar: return False, "Serviço não autenticado."
+        try:
+            self.service_calendar.events().delete(calendarId='primary', eventId=event_id).execute()
+            return True, "Evento deletado com sucesso."
+        except HttpError as error: return False, str(error)
+
+    def find_event(self, query):
+        if not self.service_calendar: return []
+        try:
+            now = datetime.datetime.utcnow().isoformat() + 'Z'
+            events_result = self.service_calendar.events().list(
+                calendarId='primary', timeMin=now, q=query, maxResults=5, singleEvents=True, orderBy='startTime').execute()
+            return events_result.get('items', [])
+        except HttpError as error: return []
+
+    # === GMAIL (NOVO: READ/DELETE) ===
+    def get_unread_emails(self, max_results=5):
+        """Retorna lista de dicionários com emails não lidos."""
+        if not self.service_gmail: return []
+        try:
+            # Lista IDs
+            results = self.service_gmail.users().messages().list(userId='me', q='is:unread in:inbox', maxResults=max_results).execute()
+            messages = results.get('messages', [])
+            
+            email_data = []
+            for msg in messages:
+                # Pega detalhes (payload headers + snippet)
+                txt = self.service_gmail.users().messages().get(userId='me', id=msg['id'], format='full').execute()
+                payload = txt.get('payload', {})
+                headers = payload.get('headers', [])
+                
+                subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '(Sem Assunto)')
+                sender = next((h['value'] for h in headers if h['name'] == 'From'), '(Desconhecido)')
+                
+                email_data.append({
+                    'id': msg['id'],
+                    'subject': subject,
+                    'sender': sender,
+                    'snippet': txt.get('snippet', '')
+                })
+            return email_data
+        except HttpError as error:
+            logger.error(f"Erro Gmail Read: {error}")
+            return []
+
+    def search_emails(self, query, max_results=5):
+        """Busca emails por query livre."""
+        if not self.service_gmail: return []
+        try:
+            results = self.service_gmail.users().messages().list(userId='me', q=query, maxResults=max_results).execute()
+            messages = results.get('messages', [])
+            
+            email_data = []
+            for msg in messages:
+                txt = self.service_gmail.users().messages().get(userId='me', id=msg['id'], format='metadata').execute()
+                headers = txt.get('payload', {}).get('headers', [])
+                subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '(Sem Assunto)')
+                email_data.append({'id': msg['id'], 'subject': subject})
+            return email_data
+        except HttpError as error: return []
+
+    def delete_email(self, msg_id):
+        """Move para lixeira (Trash)."""
+        if not self.service_gmail: return False, "Auth Error"
+        try:
+            self.service_gmail.users().messages().trash(userId='me', id=msg_id).execute()
+            return True, "Email movido para lixeira."
+        except HttpError as error: return False, str(error)
+
+    def send_email(self, to, subject, body_text):
+        if not self.service_gmail: return False, "Serviço Gmail não autenticado."
+        try:
+            message = MIMEText(body_text)
+            message['to'] = to
+            message['subject'] = subject
+            raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+            body = {'raw': raw}
+            message = self.service_gmail.users().messages().send(userId='me', body=body).execute()
+            return True, f"✅ E-mail enviado! ID: {message['id']}"
+        except HttpError as error: return False, f"Erro ao enviar email: {error}"

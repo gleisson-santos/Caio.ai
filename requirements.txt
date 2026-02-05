@@ -1,0 +1,12 @@
+python-telegram-bot
+python-dotenv
+loguru
+langchain
+langchain-core
+langchain-google-genai
+langchain-groq
+duckduckgo-search
+requests
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2

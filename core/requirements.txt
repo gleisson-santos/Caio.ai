@@ -1,0 +1,30 @@
+# Banco de Dados & Cache
+psycopg2-binary
+redis
+sqlalchemy
+pgvector
+vecs  # Cliente Python para supabase/pgvector
+
+# IA & Processamento
+langchain
+langchain-community
+langchain-openai
+langchain-google-genai
+openai
+tiktoken
+
+# Utilidades
+python-dotenv
+pydantic
+requests
+croniter
+pytz
+
+# Logging
+loguru
+
+# Integrações Externas
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+python-telegram-bot

@@ -1,0 +1,26 @@
+# Ignorar arquivos de ambiente e segurança
+.env
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Chaves Google (NUNCA SUBIR)
+core/credentials.json
+core/token.json
+credentials.json
+token.json
+client_secret_*.json
+
+# Ignorar dados do usuário (Memória e Logs)
+core/brain_data.json
+logs/
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db
