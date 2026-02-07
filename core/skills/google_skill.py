@@ -27,43 +27,62 @@ class GoogleSkill:
 
     def _authenticate(self):
         """Gerencia o ciclo de vida de autenticação (OAuth2)."""
-        # Hack: Se mudarmos escopos, o token antigo pode falhar. 
-        # Idealmente deletaríamos o token.json se os scopes mudarem, 
-        # mas aqui vamos confiar que se falhar a auth, o usuário deleta ou reautenticamos.
+        self.creds = None
         
-        if os.path.exists(self.token_path):
+        # Localizar arquivos (flexibilidade para rodar da raiz ou de core/)
+        creds_path = "credentials.json"
+        if not os.path.exists(creds_path) and os.path.exists("core/credentials.json"):
+            creds_path = "core/credentials.json"
+
+        token_path = "token.json"
+        if not os.path.exists(token_path) and os.path.exists("core/token.json"):
+            token_path = "core/token.json"
+        
+        # Tenta carregar token existente
+        if os.path.exists(token_path):
             try:
-                self.creds = Credentials.from_authorized_user_file(self.token_path, SCOPES)
+                self.creds = Credentials.from_authorized_user_file(token_path, SCOPES)
             except Exception:
-                logger.warning("Token inválido ou escopos mudaram.")
+                logger.warning("Token inválido ou corrompido.")
                 self.creds = None
-            
-        # Se não houver credenciais ou forem inválidas
+        
+        # Se não temos credenciais válidas
         if not self.creds or not self.creds.valid:
+            # Tentar refresh
             if self.creds and self.creds.expired and self.creds.refresh_token:
                 try:
                     self.creds.refresh(Request())
                 except Exception as e:
-                    logger.warning(f"Erro ao atualizar token: {e}. Tentando novo login.")
+                    logger.warning(f"Erro ao atualizar token: {e}. Necessário novo login.")
                     self.creds = None
             
+            # Se ainda não temos credenciais, precisamos fazer login
             if not self.creds:
-                if not os.path.exists(self.credentials_path):
-                    logger.error(f"❌ Arquivo '{self.credentials_path}' não encontrado! Baixe o 'OAuth Client ID' (JSON) no Google Cloud Console e salve na pasta 'core'.")
+                # Se não tem o arquivo Client ID, não podemos logar. Desativamos a skill.
+                if not os.path.exists(creds_path):
+                    logger.warning(f"⚠️ Google Skill (Gmail/Calendar) desativada: '{creds_path}' não encontrado.")
+                    # Não retornamos erro, apenas deixamos self.creds como None
+                    return 
+
+                try:
+                    # Remove token antigo se existir para evitar conflitos
+                    if os.path.exists(token_path):
+                        os.remove(token_path)
+
+                    flow = InstalledAppFlow.from_client_secrets_file(creds_path, SCOPES)
+                    # Abre navegador para login
+                    self.creds = flow.run_local_server(port=0)
+                    
+                    # Salva o novo token
+                    save_path = token_path if os.path.exists(token_path) else (
+                        "core/token.json" if os.path.exists("core") else "token.json"
+                    )
+                    with open(save_path, 'w') as token:
+                        token.write(self.creds.to_json())
+                        
+                except Exception as e:
+                    logger.error(f"Falha na autenticação Google OAuth: {e}")
                     return
-
-                # Remove token antigo se existir para forçar nova criação com escopos corretos
-                if os.path.exists(self.token_path):
-                    os.remove(self.token_path)
-
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.credentials_path, SCOPES)
-                # Isso abrirá uma janela no navegador do usuário
-                self.creds = flow.run_local_server(port=0)
-                
-            # Salvar token para próximas execuções
-            with open(self.token_path, 'w') as token:
-                token.write(self.creds.to_json())
         
         # Inicializar Serviços
         try:
