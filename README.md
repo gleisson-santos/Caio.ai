@@ -1,9 +1,29 @@
-# Caio.ai 🦁 
+# Caio.ai 🦁
 > **Intelligence. Autonomy. Connection.**
 
 Caio is a state-of-the-art Personal AI Agent designed to run locally or on a VPS. Unlike standard chatbots, Caio has "eyes" (computer vision), "hands" (file system control), and access to the real-time web. He is built with a unique "Soul Core" that prioritizes radical honesty, user autonomy, and proactive assistance.
 
 ![Status](https://img.shields.io/badge/Status-Beta-blue) ![Python](https://img.shields.io/badge/Python-3.10+-yellow) ![License](https://img.shields.io/badge/License-MIT-green)
+
+---
+
+## ⚡ Quick Start (One-Liner Install)
+
+The easiest way to install Caio. This command will:
+1. Clone the repository
+2. Create a virtual environment
+3. Install all dependencies
+4. Launch the configuration wizard
+
+### 🐧 Linux / macOS / VPS
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/caio-stack/install.sh)
+```
+
+### 🪟 Windows (PowerShell)
+```powershell
+iwr -useb https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/caio-stack/install.ps1 | iex
+```
 
 ---
 
@@ -34,42 +54,6 @@ Caio has "hands". He can:
 Caio is programmed with a "Soul Document":
 - **No Deception:** He never pretends to be human.
 - **Honesty:** He prioritizes truth over agreeableness.
-
----
-
-## 🚀 Installation (Getting Started)
-
-### Prerequisites
-- Python 3.10+
-- A Telegram Bot Token (@BotFather)
-- Google Gemini API Key (AI Studio)
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/gleisson-santos/Caio.ai.git
-cd Caio.ai/caio-stack
-```
-
-### 2. Setup Environment
-Create a `.env` file in `core/` based on the example:
-```ini
-TELEGRAM_BOT_TOKEN=your_telegram_token
-GOOGLE_API_KEY=your_gemini_key
-GROQ_API_KEY=your_groq_key
-AGENT_NAME=Caio
-```
-
-### 3. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Run Caio 🦁
-```bash
-cd core
-python main.py
-```
-*He is now alive and listening on your Telegram.*
 
 ---
 
