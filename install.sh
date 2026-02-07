@@ -42,14 +42,19 @@ echo -e "${GREEN}--> Instalando bibliotecas do Cérebro...${NC}"
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# 5. Iniciar o Wizard de Configuração
-echo -e "${BLUE}--> Iniciando Configuração Interativa...${NC}"
-python3 setup.py
+# 6. Criar Comando Global 'caio'
+echo -e "${GREEN}--> Criando comando global 'caio'...${NC}"
+LAUNCHER_PATH="$(pwd)/start.sh"
+sudo ln -sf "$LAUNCHER_PATH" /usr/local/bin/caio
+sudo chmod +x "$LAUNCHER_PATH"
 
 echo -e "${GREEN}"
 echo "=================================================="
 echo "   🦁 INSTALAÇÃO CONCLUÍDA COM SUCESSO!"
-echo "   Para rodar o agente use:"
-echo "   cd ~/caio-agent/caio-stack && source venv/bin/activate && python core/main.py"
+echo "   Agora você pode iniciar o agente de qualquer lugar digitando:"
+echo "   caio"
 echo "=================================================="
 echo -e "${NC}"
+
+# Iniciar o Wizard
+python3 setup.py
