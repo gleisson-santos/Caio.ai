@@ -10,5 +10,5 @@ if [ -d "venv" ]; then
     source venv/bin/activate
 fi
 
-# Inicia o agente
-python3 core/main.py
+# Inicia o Dashboard CLI
+python3 cli.py

@@ -5,5 +5,5 @@ IF EXIST .venv (
     CALL .venv\Scripts\activate.bat
 )
 
-python core\main.py
+python cli.py
 pause
