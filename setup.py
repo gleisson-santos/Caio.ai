@@ -103,9 +103,24 @@ def main():
     init_brain()
     
     print("\n" + "="*50)
-    print("🚀 TUDO PRONTO!")
-    print(f"Para iniciar o Agente, rode:\n   python core/main.py")
+    print("✅ INSTALAÇÃO CONCLUÍDA!")
     print("="*50 + "\n")
+    
+    start_now = input("🦁 Deseja iniciar o Agente agora? (S/n): ").strip().lower()
+    
+    if start_now == '' or start_now == 's':
+        print("\n🚀 Iniciando o Caio... (Pressione Ctrl+C para parar)\n")
+        try:
+            subprocess.run([sys.executable, "core/main.py"])
+        except KeyboardInterrupt:
+            print("\n👋 Agente parado. Até logo!")
+    else:
+        print("\nTudo bem! Para iniciar depois, basta rodar:")
+        if sys.platform == "win32":
+            print("   start.bat")
+        else:
+            print("   ./start.sh")
+
 
 if __name__ == "__main__":
     main()
