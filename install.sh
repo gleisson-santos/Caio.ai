@@ -29,8 +29,8 @@ else
     cd caio-agent
 fi
 
-# Entrar na pasta correta
-cd caio-stack
+# Entrar na pasta correta (Repo raiz já contém o código)
+# cd caio-stack (Removido pois o repo é flat)
 
 # 3. Criar Ambiente Virtual (Venv)
 echo -e "${GREEN}--> Criando ambiente virtual isolado...${NC}"

@@ -17,12 +17,12 @@ The easiest way to install Caio. This command will:
 
 ### 🐧 Linux / macOS / VPS
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/caio-stack/install.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/install.sh)
 ```
 
 ### 🪟 Windows (PowerShell)
 ```powershell
-iwr -useb https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/caio-stack/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/install.ps1 | iex
 ```
 
 ---

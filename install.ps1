@@ -29,8 +29,8 @@ if (Test-Path $installDir) {
     Set-Location $installDir
 }
 
-# 3. Entra na pasta do stack
-Set-Location "$installDir\caio-stack"
+# 3. Entra na pasta do stack (Repo raiz já contém o código)
+# Set-Location "$installDir\caio-stack"
 
 # 4. Cria e Ativa VENV
 Write-Color "🔧 Configurando ambiente virtual Python..." "Green"
