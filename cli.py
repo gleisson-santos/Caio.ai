@@ -73,11 +73,36 @@ def stop_agent():
         print(f"{YELLOW}⚠️ O agente não parece estar rodando.{RESET}")
     time.sleep(1)
 
-def update_agent():
-    print(f"\n{BLUE}⬇️ Verificando atualizações (Git)...{RESET}")
-    os.system("git pull")
-    print(f"{GREEN}✅ Atualizado!{RESET}")
-    input("Pressione Enter...")
+def configure_google():
+    print(f"\n{CYAN}📧 CONFIGURAÇÃO DO GOOGLE (GMAIL/AGENDA){RESET}")
+    print("Para ativar essa função, você precisa do arquivo 'credentials.json' do Google Cloud.")
+    print("1. Abra o arquivo 'credentials.json' no seu PC (Bloco de Notas).")
+    print("2. Copie TODO o conteúdo.")
+    print("3. Cole aqui abaixo e pressione ENTER duas vezes.")
+    
+    print(f"\n{YELLOW}⬇️ Cole o JSON abaixo:{RESET}")
+    lines = []
+    while True:
+        line = input()
+        if line:
+            lines.append(line)
+        else:
+            break
+    
+    content = "".join(lines)
+    
+    if "installed" in content or "web" in content:
+        # Salva em core/credentials.json
+        if not os.path.exists("core"): os.makedirs("core")
+        with open("core/credentials.json", "w") as f:
+            f.write(content)
+        print(f"\n{GREEN}✅ Arquivo 'credentials.json' salvo com sucesso!{RESET}")
+        print("Agora, ao iniciar o agente, ele pedirá para você clicar num link para autorizar.")
+    else:
+        print(f"\n{RED}❌ O conteúdo colado não parece ser um JSON de credenciais válido.{RESET}")
+        print("Certifique-se de copiar o arquivo inteiro baixado do Google Cloud Console.")
+    
+    input("\nPressione Enter para voltar...")
 
 def main_menu():
     while True:
@@ -86,6 +111,7 @@ def main_menu():
         print("\n[1] 🚀 Iniciar Agente (Foreground)")
         print("[2] 🧠 Configurar Chaves (.env)")
         print("[3] ⬇️ Atualizar (Git Pull)")
+        print("[4] 📧 Configurar Google (Gmail/Agenda)")
         print("[0] 🚪 Sair")
         
         choice = input(f"\n{CYAN}caio > {RESET}")
@@ -97,6 +123,8 @@ def main_menu():
             input("\nPressione Enter...")
         elif choice == '3':
             update_agent()
+        elif choice == '4':
+            configure_google()
         elif choice == '0':
             print("Até logo!")
             sys.exit(0)
