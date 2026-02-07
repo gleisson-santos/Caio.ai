@@ -42,11 +42,21 @@ echo -e "${GREEN}--> Instalando bibliotecas do Cérebro...${NC}"
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# 6. Criar Comando Global 'caio'
-echo -e "${GREEN}--> Criando comando global 'caio'...${NC}"
-LAUNCHER_PATH="$(pwd)/start.sh"
-sudo ln -sf "$LAUNCHER_PATH" /usr/local/bin/caio
-sudo chmod +x "$LAUNCHER_PATH"
+# 6. Criar Comando Global 'caio' (Wrapper robusto)
+echo -e "${GREEN}--> Configurando comando 'caio'...${NC}"
+INSTALL_DIR="$(pwd)"
+WRAPPER_PATH="/usr/local/bin/caio"
+
+# Remove link antigo se existir
+if [ -L "$WRAPPER_PATH" ]; then
+    sudo rm "$WRAPPER_PATH"
+fi
+
+# Cria script wrapper que força o CD para a pasta correta
+echo "#!/bin/bash" | sudo tee "$WRAPPER_PATH" > /dev/null
+echo "cd \"$INSTALL_DIR\"" | sudo tee -a "$WRAPPER_PATH" > /dev/null
+echo "./start.sh" | sudo tee -a "$WRAPPER_PATH" > /dev/null
+sudo chmod +x "$WRAPPER_PATH"
 
 echo -e "${GREEN}"
 echo "=================================================="

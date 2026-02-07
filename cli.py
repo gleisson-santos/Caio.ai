@@ -74,10 +74,18 @@ def stop_agent():
     time.sleep(1)
 
 def configure_google():
-    print(f"\n{CYAN}📧 CONFIGURAÇÃO DO GOOGLE (GMAIL/AGENDA){RESET}")
-    print("Para ativar essa função, você precisa do arquivo 'credentials.json' do Google Cloud.")
-    print("1. Abra o arquivo 'credentials.json' no seu PC (Bloco de Notas).")
-    print("2. Copie TODO o conteúdo.")
+    print(f"\n{CYAN}📧 TUTORIAL: MODO DEUS (GMAIL & CALENDAR){RESET}")
+    print("Para o Caio acessar seu Google, você precisa criar uma 'Chave Mestra' gratuita.")
+    print("\n--- PASSO A PASSO ---")
+    print(f"1. Acesse: {BLUE}https://console.cloud.google.com/apis/credentials{RESET}")
+    print("2. Crie um Novo Projeto (dê o nome 'Caio AI').")
+    print("3. No menu 'Biblioteca', ative as APIs: {BOLD}Gmail API{RESET} e {BOLD}Google Calendar API{RESET}.")
+    print("4. Volte em 'Credenciais' > 'Criar Credenciais' > 'ID do cliente OAuth'.")
+    print("5. Tipo de Aplicativo: Escolha {BOLD}'App para Desktop'{RESET}.")
+    print("6. Baixe o arquivo JSON (botão de download ⬇️).")
+    print("\n--- AGORA A MÁGICA ---")
+    print("1. Abra esse arquivo JSON no Bloco de Notas.")
+    print("2. Copie TODO o conteúdo dele.")
     print("3. Cole aqui abaixo e pressione ENTER duas vezes.")
     
     print(f"\n{YELLOW}⬇️ Cole o JSON abaixo:{RESET}")
