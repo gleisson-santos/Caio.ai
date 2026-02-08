@@ -13,6 +13,9 @@ import datetime
 BLUE = "\033[34m"
 RESET = "\033[0m"
 
+# PERMITE HTTP EM LOCALHOST (Correção para o erro 'insecure_transport')
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 # Escopos necessários
 SCOPES = [
     'https://www.googleapis.com/auth/calendar',
