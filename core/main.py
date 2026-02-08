@@ -119,17 +119,55 @@ class ProactiveMonitor:
             msg = f"🥵 Uffa! Faz **{temp}°C** agora em {user_city}.\nLembre-se de beber água, {name}! 💧"
             await bot.send_message(chat_id=self.user_chat_id, text=msg)
 
+class ProactiveMonitor:
+    def __init__(self):
+        self.user_chat_id = None
+        self.alerted_events = set()
+
+    async def loop(self, bot):
+        logger.info("🧠 Cérebro Proativo Iniciado...")
+        while True:
+            await asyncio.sleep(60) # Pulso de 1 minuto
+            
+            if not self.user_chat_id: continue
+            
+            try:
+                # 1. Checagem de Calendário (15 min avisos)
+                # Precisamos que o GoogleSkill retorne lista crua. 
+                # Se não existir, vai falhar silenciosamente no try
+                if hasattr(google_skills, 'get_upcoming_raw'):
+                    events = google_skills.get_upcoming_raw()
+                    now = datetime.now(timezone.utc)
+                    
+                    for evt in events:
+                        start_str = evt['start'].get('dateTime')
+                        if not start_str: continue # Evento dia todo
+                        
+                        start_dt = datetime.fromisoformat(start_str)
+                        # Ajuste simples de fuso se precisar, mas comparando diff
+                        diff = (start_dt - now).total_seconds() / 60
+                        
+                        if 10 <= diff <= 15: # Entre 10 e 15 min
+                            evt_id = evt['id']
+                            if evt_id not in self.alerted_events:
+                                summary = evt.get('summary', 'Evento')
+                                msg = f"🦁 *Lembrete Rápido*: '{summary}' começa em 15 minutos!"
+                                await bot.send_message(chat_id=self.user_chat_id, text=msg)
+                                self.alerted_events.add(evt_id)
+                                
+            except Exception as e:
+                logger.error(f"Erro no Loop Proativo: {e}")
+
 monitor = ProactiveMonitor()
 
 async def post_init(application):
     """Gatilho pós-inicialização para rodar loops de fundo."""
     global scheduler_skill, app_instance
-    app_instance = application # Guarda referência global
-    
+    app_instance = application
     # Inicia Scheduler
     scheduler_skill = SchedulerSkill(send_telegram_message_callback)
     scheduler_skill.start(asyncio.get_running_loop())
-    
+    # Inicia Monitor Proativo
     asyncio.create_task(monitor.loop(application.bot))
 
 # --- LÓGICA DO TELEGRAM ---
