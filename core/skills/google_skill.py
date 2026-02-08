@@ -65,24 +65,37 @@ class GoogleSkill:
                     return 
 
                 try:
-                    # Remove token antigo se existir para evitar conflitos
-                    if os.path.exists(token_path):
-                        os.remove(token_path)
-
-                    flow = InstalledAppFlow.from_client_secrets_file(creds_path, SCOPES)
-                    # Abre navegador para login
+                    # Tenta método automático primeiro (abre navegador)
+                    # Se estiver em VPS sem X11, isso vai falhar
+                    logger.info("Tentando abrir navegador para autenticação...")
                     self.creds = flow.run_local_server(port=0)
-                    
-                    # Salva o novo token
-                    save_path = token_path if os.path.exists(token_path) else (
-                        "core/token.json" if os.path.exists("core") else "token.json"
-                    )
-                    with open(save_path, 'w') as token:
-                        token.write(self.creds.to_json())
-                        
                 except Exception as e:
-                    logger.error(f"Falha na autenticação Google OAuth: {e}")
-                    return
+                    logger.warning(f"Navegador automático falhou ({e}). Iniciando modo manual (VPS)...")
+                    
+                    # Modo Manual (Inspirado no OpenClaw / GCloud CLI)
+                    auth_url, _ = flow.authorization_url(prompt='consent')
+                    
+                    print("\n" + "="*60)
+                    print("🦁 MODO DE AUTENTICAÇÃO MANUAL (VPS)")
+                    print("="*60)
+                    print("1. Abra este link no seu navegador (PC/Celular):")
+                    print(f"{BLUE}{auth_url}{RESET}")
+                    print("-" * 60)
+                    print("2. Faça login e autorize o app.")
+                    print("3. Você será redirecionado para uma página (provavelmente com erro 'Não foi possível conectar').")
+                    print("4. COPIE A URL INTEIRA da barra de endereços dessa página de erro.")
+                    print("5. Cole a URL abaixo:")
+                    print("="*60 + "\n")
+                    
+                    code_url = input("Cole a URL de redirecionamento aqui: ").strip()
+                    
+                    try:
+                        # O google-auth-oauthlib consegue extrair o código da URL completa
+                        # Precisamos garantir que o flow saiba que o redirect_uri é localhost (ou o que estiver no JSON)
+                        self.creds = flow.fetch_token(authorization_response=code_url)
+                    except Exception as token_error:
+                        logger.error(f"Erro ao trocar código por token: {token_error}")
+                        return
         
         # Inicializar Serviços
         try:
