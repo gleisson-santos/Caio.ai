@@ -44,15 +44,19 @@ class WebSkill:
     def _search_ddg(self, query, max_results):
         try:
             logger.info(f"🦆 Buscando via DuckDuckGo: {query}")
-            # DDGS.text retorna lista de dicts
-            results = self.ddgs.text(query, max_results=max_results)
+            # DDGS.text retorna generator ou lista de dicts dependendo da versão
+            # Forçamos list() para garantir iterabilidade
+            results = list(self.ddgs.text(query, max_results=max_results))
             
             if not results:
                 return []
             
             formatted = []
             for r in results:
-                formatted.append(f"Título: {r['title']}\nLink: {r['href']}\nResumo: {r['body']}\n")
+                title = r.get('title', 'Sem título')
+                link = r.get('href', '#')
+                body = r.get('body', '')
+                formatted.append(f"Título: {title}\nLink: {link}\nResumo: {body}\n")
             
             return formatted
         except Exception as e:

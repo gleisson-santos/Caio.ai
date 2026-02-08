@@ -6,51 +6,40 @@ import asyncio
 
 class SchedulerSkill:
     def __init__(self, send_message_async_callback):
-        """
-        :param send_message_async_callback: Função async que aceita (chat_id, text)
-        """
         self.send_callback = send_message_async_callback
         self.running = True
-        self.loop = None # Loop do asyncio onde o bot roda
-        
-        # Inicia loop do scheduler em thread separada
-        self.thread = threading.Thread(target=self._run_loop)
-        self.thread.daemon = True
+        self.loop = None 
         
     def start(self, loop):
         self.loop = loop
-        self.thread.start()
-        logger.info("⏰ Scheduler System (Watchdog) Iniciado")
+        # Cria task asyncio ao invés de Thread
+        loop.create_task(self._async_loop())
+        logger.info("⏰ Scheduler System (Async Native) Iniciado")
 
-    def _run_loop(self):
+    async def _async_loop(self):
+        """Loop principal do agendador rodando dentro do asyncio."""
         while self.running:
+            # schedule.run_pending() é rápido o suficiente para não bloquear
             schedule.run_pending()
-            time.sleep(1)
+            await asyncio.sleep(1)
 
     def _trigger(self, chat_id, message):
-        """Chamado pelo schedule (thread secundária). Precisa agendar no loop principal."""
+        """Dispara o callback. Como já estamos no loop, basta criar task."""
         if self.loop and self.send_callback:
-            # Thread-safe call to async loop
-            # Formatação limpa conforme pedido
             clean_msg = f"🔔 {message}"
-            asyncio.run_coroutine_threadsafe(
-                self.send_callback(chat_id, clean_msg), 
-                self.loop
-            )
+            # Não precisa de threadsafe, já estamos no loop
+            self.loop.create_task(self.send_callback(chat_id, clean_msg))
 
     def set_reminder(self, chat_id, minutes, message):
-        """Agenda um lembrete único (One-Shot)."""
         minutes = int(minutes)
-        
         def job():
             self._trigger(chat_id, message)
-            return schedule.CancelJob # Executa uma vez e morre
-
+            return schedule.CancelJob
+        
         schedule.every(minutes).minutes.do(job)
-        return f"⏰ Combinado! Daqui a {minutes} minutos eu te aviso sobre: '{message}'"
+        return f"⏰ Combinado! Daqui a {minutes} min te aviso."
 
     def set_daily(self, chat_id, time_str, message):
-        """Agenda algo diário. Ex: '09:00'."""
         def job():
             self._trigger(chat_id, message)
         
