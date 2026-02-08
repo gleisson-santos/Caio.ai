@@ -29,11 +29,18 @@ iwr -useb https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/install
 
 ## ✨ Key Capabilities
 
-### 🧠 **Proactive Intelligence**
-Caio doesn't just wait for commands. He monitors:
-- **Emails:** Reads and filters your inbox, alerting only what matters.
-- **Weather:** Warns you about heatwaves or rain in your city.
-- **Schedule:** Reminds you of meetings proactively.
+### 🧠 **Proactive Intelligence (New!)**
+Caio doesn't just wait for commands. He monitors your digital life:
+- **Executive Email Agent:** 
+  - Reads your inbox and creates categorized summaries (Urgent, Finance/Banks, General).
+  - Identifies important senders like Inter, PicPay, and Nubank automatically.
+  - "No more spam, just what matters."
+- **Smart Scheduler:** 
+  - Just say: *"Remind me in 10 minutes to check the oven"*.
+  - Caio actively alerts you on Telegram when the time comes.
+  - Monitors your Google Calendar for upcoming events.
+- **Wellness Watch:** 
+  - Checks the weather in your city and reminds you to drink water if it's too hot.
 
 ### 👁️ **Vision (Multimodal)**
 Send any photo to Caio on Telegram. He uses **Google Gemini Vision** to:

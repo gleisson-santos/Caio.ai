@@ -187,34 +187,80 @@ class GoogleSkill:
         except HttpError as error: return []
 
     # === GMAIL (NOVO: READ/DELETE) ===
-    def get_unread_emails(self, max_results=5):
-        """Retorna lista de dicionários com emails não lidos."""
-        if not self.service_gmail: return []
+    def list_unread_emails(self, limit=20):
+        """Lista e analisa e-mails não lidos."""
         try:
-            # Lista IDs
-            results = self.service_gmail.users().messages().list(userId='me', q='is:unread in:inbox', maxResults=max_results).execute()
+            if not self.creds: return "Não autenticado."
+            # Usar self.service_gmail que já está autenticado
+            if not self.service_gmail: return "Serviço Gmail não disponível."
+            
+            # Busca mais abrangente
+            results = self.service_gmail.users().messages().list(userId='me', q='is:unread', maxResults=limit).execute()
             messages = results.get('messages', [])
             
-            email_data = []
+            if not messages:
+                return "📭 Caixa de entrada limpa! Nenhum e-mail novo."
+            
+            summary_data = {
+                "total": len(messages),
+                "urgentes": [],
+                "bancos": [],
+                "geral": []
+            }
+            
+            # Palavras-chave para categorização
+            keywords_urgente = ["urgente", "vencimento", "atraso", "importante", "fatura"]
+            keywords_banco = ["inter", "picpay", "nubank", "bradesco", "itaú", "santander", "caixa"]
+
+            email_list = [] # This variable is not used in the new logic, can be removed or kept as is.
             for msg in messages:
-                # Pega detalhes (payload headers + snippet)
-                txt = self.service_gmail.users().messages().get(userId='me', id=msg['id'], format='full').execute()
-                payload = txt.get('payload', {})
-                headers = payload.get('headers', [])
+                txt = self.service_gmail.users().messages().get(userId='me', id=msg['id']).execute()
+                headers = txt['payload']['headers']
+                subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "Sem Assunto")
+                sender = next((h['value'] for h in headers if h['name'] == 'From'), "Desconhecido")
+                snippet = txt.get('snippet', '')
                 
-                subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '(Sem Assunto)')
-                sender = next((h['value'] for h in headers if h['name'] == 'From'), '(Desconhecido)')
+                # Categorização Simples
+                lower_subj = subject.lower()
+                lower_sender = sender.lower()
                 
-                email_data.append({
-                    'id': msg['id'],
-                    'subject': subject,
-                    'sender': sender,
-                    'snippet': txt.get('snippet', '')
-                })
-            return email_data
+                is_urgent = any(k in lower_subj for k in keywords_urgente)
+                is_bank = any(k in lower_sender for k in keywords_banco)
+                
+                email_info = f"- [{sender}]: {subject}"
+                
+                if is_urgent:
+                    summary_data["urgentes"].append(email_info)
+                elif is_bank:
+                    summary_data["bancos"].append(email_info)
+                else:
+                    summary_data["geral"].append(email_info)
+
+            # Construção do Relatório Power
+            report = [f"📧 **ANÁLISE DE E-MAILS ({summary_data['total']} não lidos recentes)**"]
+            
+            if summary_data["urgentes"]:
+                report.append(f"\n🚨 **URGENTES/VENCIMENTOS ({len(summary_data['urgentes'])}):**")
+                report.extend(summary_data["urgentes"])
+                
+            if summary_data["bancos"]:
+                report.append(f"\n💰 **FINANCEIRO/BANCOS ({len(summary_data['bancos'])}):**")
+                report.extend(summary_data["bancos"])
+                
+            report.append(f"\n📝 **OUTROS DESTAQUES:**")
+            # Mostra apenas os primeiros 5 gerais para não poluir
+            report.extend(summary_data["geral"][:5])
+            
+            if len(summary_data["geral"]) > 5:
+                report.append(f"... e mais {len(summary_data['geral']) - 5} diversos.")
+
+            return "\n".join(report)
+
         except HttpError as error:
             logger.error(f"Erro Gmail Read: {error}")
-            return []
+            return f"Erro ao ler e-mails: {error}"
+        except Exception as e:
+            return f"Erro ao ler e-mails: {e}"
 
     def search_emails(self, query, max_results=5):
         """Busca emails por query livre."""
