@@ -6,7 +6,6 @@ import sys
 def colored_print(text, color_code):
     if sys.platform == "win32":
         try:
-            # Fallback simples para Windows
             print(text)
         except:
             print(text)
@@ -38,8 +37,19 @@ def install_dependencies():
         sys.exit(1)
 
 def setup_env():
+    # Verifica se o .env já existe na raiz ou em core/
+    env_exists = os.path.exists(".env") or os.path.exists(os.path.join("core", ".env"))
+    
+    if env_exists:
+        print("\n🔑  CONFIGURAÇÃO DE SEGURANÇA")
+        print("⚠️ Arquivo .env detectado. Deseja reconfigurar suas chaves?")
+        reconfig = input("Pressione 's' para reconfigurar ou qualquer outra tecla para pular: ").lower()
+        if reconfig != 's':
+            print("✅ Usando configurações existentes. Pulando setup...")
+            return
+
     print("\n🔑  CONFIGURAÇÃO DE SEGURANÇA")
-    print("Vamos configurar suas chaves. Se não tiver alguma, deixe em branco (algumas funções podem falhar).\n")
+    print("Vamos configurar suas chaves. Se não tiver alguma, deixe em branco.\n")
     
     telegram_token = input("1. Digite o TELEGRAM_BOT_TOKEN (BotFather): ").strip()
     google_key = input("2. Digite a GOOGLE_API_KEY (Google AI Studio): ").strip()
@@ -54,23 +64,21 @@ AGENT_NAME={agent_name}
 ALLOWED_USER_ID={user_id}
 """
     
-    # Salva no .env na raiz (se existir) e garante em core/
     try:
         with open(".env", "w", encoding='utf-8') as f:
             f.write(env_content)
     except Exception as e:
         print(f"⚠️ Erro ao escrever .env na raiz: {e}")
     
-    # Cria diretório core se não existir
     if not os.path.exists("core"):
         os.makedirs("core")
         
     try:
         with open(os.path.join("core", ".env"), "w", encoding='utf-8') as f:
             f.write(env_content)
-        print("\n✅ Arquivo .env criado com sucesso em core/!")
+        print("\n✅ Arquivo .env criado com sucesso!")
     except Exception as e:
-        print(f"❌ Erro crítico ao salvar chaves em core/: {e}")
+        print(f"❌ Erro crítico ao salvar chaves: {e}")
         sys.exit(1)
 
 def init_brain():
@@ -95,8 +103,8 @@ def main():
     print_header()
     check_python_version()
     
-    response = input("Deseja instalar as dependências agora? (s/n): ").lower()
-    if response == 's':
+    # Tenta instalar dependências automaticamente se não houver .env (primeira instalação)
+    if not os.path.exists(".env"):
         install_dependencies()
         
     setup_env()
@@ -120,7 +128,6 @@ def main():
             print("   start.bat")
         else:
             print("   ./start.sh")
-
 
 if __name__ == "__main__":
     main()
