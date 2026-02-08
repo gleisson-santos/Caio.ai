@@ -3,14 +3,14 @@
 
 Caio is a state-of-the-art Personal AI Agent designed to run locally or on a VPS. Unlike standard chatbots, Caio has "eyes" (computer vision), "hands" (file system control), and access to the real-time web. He is built with a unique "Soul Core" that prioritizes radical honesty, user autonomy, and proactive assistance.
 
-![Status](https://img.shields.io/badge/Status-Beta-blue) ![Python](https://img.shields.io/badge/Python-3.10+-yellow) ![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-v2.0--Elite-blue) ![Python](https://img.shields.io/badge/Python-3.10+-yellow) ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
 
 ## ⚡ Quick Start (One-Liner Install)
 
-The easiest way to install Caio. This command will:
-1. Clone the repository
+The easiest way to install or update Caio. This command will:
+1. Clone/Update the repository
 2. Create a virtual environment
 3. Install all dependencies
 4. Launch the configuration wizard
@@ -20,56 +20,40 @@ The easiest way to install Caio. This command will:
 bash <(curl -sSL https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/install.sh)
 ```
 
-### 🪟 Windows (PowerShell)
-```powershell
-iwr -useb https://raw.githubusercontent.com/gleisson-santos/Caio.ai/main/install.ps1 | iex
-```
-
 ---
 
-## ✨ Key Capabilities
+## ✨ Key Capabilities (v2.0 Elite)
 
-### 🧠 **Proactive Intelligence (New!)**
-Caio doesn't just wait for commands. He monitors your digital life:
-- **Executive Email Agent:** 
-  - Reads your inbox and creates categorized summaries (Urgent, Finance/Banks, General).
-  - Identifies important senders like Inter, PicPay, and Nubank automatically.
-  - "No more spam, just what matters."
-- **Smart Scheduler:** 
-  - Just say: *"Remind me in 10 minutes to check the oven"*.
-  - Caio actively alerts you on Telegram when the time comes.
-  - Monitors your Google Calendar for upcoming events.
-- **Wellness Watch:** 
-  - Checks the weather in your city and reminds you to drink water if it's too hot.
+### 🧠 **Proactive Intelligence & Multi-Intent**
+Caio now understands complex, multi-step commands and acts proatively:
+- **Multi-Intent Processing:** Say *"Schedule a meeting tomorrow at 10am and remind me in 1 minute"* and Caio will do both simultaneously.
+- **Proactive Alerts:** Caio monitors your Google Calendar and sends a Telegram alert **15 minutes before** any event starts.
+- **Smart Scheduler:** Robust reminder system with natural language processing.
+
+### 📁 **Google Drive & Document Processing**
+Caio now has full access to your cloud and documents:
+- **Google Drive Integration:** Upload files, create folders, and get shareable links directly via Telegram.
+- **Document Analysis:** Caio can read and summarize **PDF, Word (DOCX), and Excel (XLSX)** files.
+- **File Management:** Move, copy, and organize files locally and in the cloud.
+
+### 🌍 **Brave Search & Web Access**
+- **Brave Search API:** High-precision web searches for real-time news and data.
+- **Web Synthesis:** Analyzes multiple sources to provide a single, coherent answer.
 
 ### 👁️ **Vision (Multimodal)**
-Send any photo to Caio on Telegram. He uses **Google Gemini Vision** to:
-- Analyze computer errors (screenshots).
-- Describe places and objects.
-- Summarize physical documents.
+Send any photo to Caio on Telegram. He uses **Google Gemini Vision** to analyze screenshots, documents, and objects.
 
-### 🌍 **Real-Time Web Access**
-Caio surfs the web using **DuckDuckGo** (and optionally **Brave Search**) to find real-time information, news, and prices. He is not limited to his training data.
-
-### 📂 **File System Control**
-Caio has "hands". He can:
-- List files in local directories.
-- Create folders for organization.
-- Read file previews directly from chat.
-
-### 🛡️ **Radical Integrity (Soul Core)**
-Caio is programmed with a "Soul Document":
-- **No Deception:** He never pretends to be human.
-- **Honesty:** He prioritizes truth over agreeableness.
+### 💬 **Telegram Friendly**
+- **Clean Formatting:** All messages are optimized for Telegram (Markdown), using clear bolding and readable dates.
+- **Proactive Personality:** A warm, sagacious, and helpful digital entity.
 
 ---
 
 ## 🏗️ Architecture
 
-- **Core:** Built on standard Python `asyncio` for high performance.
-- **Brain:** Uses **LLaMA 3.3 (via Groq)** for reasoning and **Gemini 1.5** for vision.
-- **Memory:** Local JSON-based episodic memory (No external database required).
-- **Skills:** Modular skill system (`WebSkill`, `FileSystemSkill`, `WeatherSkill`).
+- **Core:** Python `asyncio` with a multi-intent pipeline.
+- **Brain:** **LLaMA 3.3 (via Groq)** for reasoning and **Gemini 1.5** for vision.
+- **Skills:** Modular system including `GoogleDriveSkill`, `BraveSearchSkill`, and `DocumentProcessorSkill`.
 
 ---
 

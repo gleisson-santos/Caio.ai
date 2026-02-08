@@ -4,10 +4,14 @@ loguru
 langchain
 langchain-google-genai
 langchain-groq
-python-telegram-bot
 google-generativeai
 duckduckgo-search
 google-auth-oauthlib
 google-auth-httplib2
 google-api-python-client
 schedule
+PyPDF2
+python-docx
+openpyxl
+pillow
+aiohttp
