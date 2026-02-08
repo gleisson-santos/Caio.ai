@@ -149,15 +149,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     brain_memory.store(user_text, source="telegram", importance=1)
     
     # --- ⚡ 0. INTERCEPTADOR DE LEMBRETES (REGEX FAST) ---
-    remind_match = re.search(r"(?:me lembre|lembrete|avisar|avise|agende).*(?:daqui a|em)\s*(\d+)\s*(min|m)(?:utos)?\s*(?:de|sobre|que)?\s*(.*)", user_text, re.IGNORECASE)
+    # Agora suporta fluxo contínuo (não aborta) para permitir "Agendar E Lembrar"
+    remind_match = re.search(r"(?:me\s+lembr[ea]|lembrete|avis[ea]|agend[ea]|notifiqi?ue).*(?:daqui a|em)\s*(\d+)\s*(min|m)(?:utos)?\s*(?:de|sobre|que)?\s*(.*)", user_text, re.IGNORECASE)
+    
     if remind_match:
         minutes = remind_match.group(1)
+        # O grupo 3 (msg) pode estar vazio. Se estiver, usa o texto todo como contexto.
         msg_content = remind_match.group(3).strip()
-        if not msg_content: msg_content = "Verificar o que você pediu."
+        if not msg_content: msg_content = user_text[:50]
         
         reply = scheduler_skill.set_reminder(chat_id, minutes, msg_content)
         await update.message.reply_text(reply)
-        return 
+        # NÃO RETORNA! Deixa o fluxo seguir para o LLM processar outras intenções (como agenda). 
 
     # 1. Verificar Intenção
     intent = caio_persona.detect_intent(user_text)
