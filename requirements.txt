@@ -3,14 +3,11 @@ python-dotenv
 loguru
 langchain
 langchain-google-genai
+langchain-groq
 python-telegram-bot
 google-generativeai
-python-dotenv
-loguru
 duckduckgo-search
 google-auth-oauthlib
 google-auth-httplib2
 google-api-python-client
 schedule
-google-auth-oauthlib
-google-auth-httplib2
