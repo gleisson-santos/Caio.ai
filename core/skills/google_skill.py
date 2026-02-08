@@ -64,6 +64,9 @@ class GoogleSkill:
                     # Não retornamos erro, apenas deixamos self.creds como None
                     return 
 
+                # Inicializa o fluxo ANTES do try para estar disponível no except
+                flow = InstalledAppFlow.from_client_secrets_file(creds_path, SCOPES)
+                
                 try:
                     # Tenta método automático primeiro (abre navegador)
                     # Se estiver em VPS sem X11, isso vai falhar
