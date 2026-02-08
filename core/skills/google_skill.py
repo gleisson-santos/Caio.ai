@@ -102,7 +102,8 @@ class GoogleSkill:
                     try:
                         # O google-auth-oauthlib consegue extrair o código da URL completa
                         # Precisamos garantir que o flow saiba que o redirect_uri é localhost (ou o que estiver no JSON)
-                        self.creds = flow.fetch_token(authorization_response=code_url)
+                        flow.fetch_token(authorization_response=code_url)
+                        self.creds = flow.credentials
                     except Exception as token_error:
                         logger.error(f"Erro ao trocar código por token: {token_error}")
                         return
