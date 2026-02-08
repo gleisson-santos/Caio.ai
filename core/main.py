@@ -191,9 +191,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         desc = intent.get("description", "")
         success, msg = google_skills.create_event(summary, start_time, end_time, desc)
         if success:
-             response_text = f"✅ Agendado: **{summary}** para {start_time}."
+             # Bypass LLM/ISO: msg já vem formatada do Skill
+             response_text = f"✅ {msg}"
         else:
-            response_text = f"Tive um problema com o Google Agenda: {msg}"
+            response_text = f"❌ Erro Google Agenda: {msg}"
 
     elif action == "google_calendar_list":
         response_text = google_skills.list_upcoming_events()
