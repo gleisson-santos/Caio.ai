@@ -157,17 +157,34 @@ class GoogleSkill:
 
     def create_event(self, summary, start_datetime_iso, end_datetime_iso=None, description=""):
         if not self.service_calendar: return False, "Serviço Google não autenticado."
+        
+        # Garante end_time se não houver
         if not end_datetime_iso:
             try:
                 dt_start = datetime.datetime.fromisoformat(start_datetime_iso)
                 dt_end = dt_start + datetime.timedelta(hours=1)
                 end_datetime_iso = dt_end.isoformat()
             except ValueError: return False, "Formato de data inválido. Use ISO 8601."
-        event = {'summary': summary, 'description': description,
-            'start': {'dateTime': start_datetime_iso}, 'end': {'dateTime': end_datetime_iso}}
+
+        event_body = {
+            'summary': summary, 
+            'description': description,
+            'start': {'dateTime': start_datetime_iso, 'timeZone': 'America/Sao_Paulo'}, 
+            'end': {'dateTime': end_datetime_iso, 'timeZone': 'America/Sao_Paulo'}
+        }
+        
         try:
-            event = self.service_calendar.events().insert(calendarId='primary', body=event).execute()
-            return True, f"✅ Evento criado: {event.get('htmlLink')}"
+            created_event = self.service_calendar.events().insert(calendarId='primary', body=event_body).execute()
+            
+            # Formatação Humana para Confirmação
+            try:
+                dt_obj = datetime.datetime.fromisoformat(start_datetime_iso)
+                human_date = dt_obj.strftime("%d/%m às %H:%M")
+            except:
+                human_date = start_datetime_iso # Fallback
+                
+            return True, f"Agenda: {human_date}" 
+            
         except HttpError as error: return False, str(error)
 
     def delete_event(self, event_id):

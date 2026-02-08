@@ -148,19 +148,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     brain_memory.store(user_text, source="telegram", importance=1)
     
-    # --- ⚡ 0. INTERCEPTADOR DE LEMBRETES (REGEX FAST) ---
-    # Agora suporta fluxo contínuo (não aborta) para permitir "Agendar E Lembrar"
-    remind_match = re.search(r"(?:me\s+lembr[ea]|lembrete|avis[ea]|agend[ea]|notifiqi?ue).*(?:daqui a|em)\s*(\d+)\s*(min|m)(?:utos)?\s*(?:de|sobre|que)?\s*(.*)", user_text, re.IGNORECASE)
+    # --- ⚡ 0. INTERCEPTADOR DE LEMBRETES (REGEX CORRIGIDO & HUMANIZADO) ---
+    # Captura: "Me lembre daqui a 10 min de sair" -> 10, remover "de", msg="sair"
+    remind_match = re.search(r"(?:me\s+lembre|avis[ea]|notifique).*(?:daqui\s*a|em)\s*(\d+)\s*(?:minutos?|mins?|m)\s*(?:de|sobre|que)?\s*(.*)", user_text, re.IGNORECASE)
     
     if remind_match:
         minutes = remind_match.group(1)
-        # O grupo 3 (msg) pode estar vazio. Se estiver, usa o texto todo como contexto.
-        msg_content = remind_match.group(3).strip()
-        if not msg_content: msg_content = user_text[:50]
+        raw_msg = remind_match.group(2).strip()
         
-        reply = scheduler_skill.set_reminder(chat_id, minutes, msg_content)
-        await update.message.reply_text(reply)
-        # NÃO RETORNA! Deixa o fluxo seguir para o LLM processar outras intenções (como agenda). 
+        # Correção do Bug "uto": Remove sufixos acidentais se a regex falhar nos grupos
+        # Se a msg começar com "utos " ou "tos ", remove.
+        msg_content = re.sub(r"^(?:utos?|tos?|s)\s+", "", raw_msg, flags=re.IGNORECASE).strip()
+        
+        if not msg_content: 
+            # Tenta pegar contexto do início se o fim estiver vazio (ex: "Me lembre do bolo daqui a 10 min")
+            if len(user_text) < 100: msg_content = f"Lembrete: {user_text}"
+            else: msg_content = "Verificar pendência."
+
+        # Agenda silenciosamente no sistema
+        scheduler_skill.set_reminder(chat_id, minutes, msg_content)
+        
+        # Resposta Humanizada (Sem return, para permitir chaining com Calendar)
+        await update.message.reply_text(f"⏰ Combinado! Daqui a {minutes} min te aviso sobre: _{msg_content}_")
+        
+        # Continua fluxo para o LLM (pode ser um "Agendar X e me lembrar") 
 
     # 1. Verificar Intenção
     intent = caio_persona.detect_intent(user_text)

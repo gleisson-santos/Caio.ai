@@ -30,10 +30,11 @@ class SchedulerSkill:
     def _trigger(self, chat_id, message):
         """Chamado pelo schedule (thread secundária). Precisa agendar no loop principal."""
         if self.loop and self.send_callback:
-            logger.info(f"⏰ Disparando Alerta para {chat_id}")
             # Thread-safe call to async loop
+            # Formatação limpa conforme pedido
+            clean_msg = f"🔔 {message}"
             asyncio.run_coroutine_threadsafe(
-                self.send_callback(chat_id, f"🔔 **LEMBRETE:** {message}"), 
+                self.send_callback(chat_id, clean_msg), 
                 self.loop
             )
 
