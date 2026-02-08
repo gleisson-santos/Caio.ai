@@ -147,35 +147,39 @@ class InputPipeline:
         return text.strip()
 
     @staticmethod
-    def extract_commands(text):
+    def extract_and_clean(text):
         commands = []
-        text = InputPipeline.normalize(text)
+        clean_text = text
         
-        # 1. Lembretes (High Priority regex)
-        # Captura: "Me lembre daqui a 10 min de X"
-        remind_match = re.search(r"(?:me\s+lembre|avis[ea]|notifique).*(?:daqui\s*a|em)\s*(\d+)\s*(?:minutos?|mins?|m)\s*(?:de|sobre|que)?\s*(.*)", text, re.IGNORECASE)
-        if remind_match:
-            minutes = remind_match.group(1)
-            raw_msg = remind_match.group(2).strip()
-            # Limpeza "uto" e sufixos
+        # 1. Lembretes (Busca GLOBAL na frase)
+        # Captura: "Agendar X e [me lembre daqui a 10 min de Y]"
+        # Regex flexível para capturar o trecho de lembrete
+        regex = r"(?:e\s+)?(?:me\s+lembre|avis[ea]|notifique|lembrete).*(?:daqui\s*a|em)\s*(\d+)\s*(?:minutos?|mins?|m)\s*(?:de|sobre|que)?\s*([^,\.\n]*)"
+        
+        matches = list(re.finditer(regex, text, re.IGNORECASE))
+        
+        for match in matches:
+            full_match = match.group(0)
+            minutes = match.group(1)
+            raw_msg = match.group(2).strip()
+            
+            # Limpeza
             msg_content = re.sub(r"^(?:utos?|tos?|s)\s+", "", raw_msg, flags=re.IGNORECASE).strip()
             if not msg_content: 
-                msg_content = f"Lembrete: {text[:50]}..."
-            
+                # Tenta pegar o contexto anterior se a msg interna for vazia
+                # Ex: "Fazer bolo e me lembrar daqui a 10 min" -> msg="Fazer bolo"
+                msg_content = clean_text.replace(full_match, "").strip()[:50]
+
             commands.append({
                 "type": "reminder",
                 "minutes": minutes,
                 "msg": msg_content
             })
-
-        # 2. Agenda Rápida (Regex simples para detectar intenção, mas deixa dados pro LLM se complexo)
-        # Se tiver "agendar" ou "reunião" E uma hora "XX:XX" ou "XXh", marca flag
-        if re.search(r"(agend[ar]|marc[ar]|reunião|compromisso)", text, re.IGNORECASE):
-             # Não extraímos dados aqui pq calendário é complexo, mas sabemos que é agenda
-             # O Pipeline decide: Se tem lembrete E agenda, executa lembrete e passa o resto pro LLM
-             pass
-
-        return commands
+            
+            # Remove o comando de lembrete do texto principal para o LLM não se confundir
+            clean_text = clean_text.replace(full_match, "").strip()
+            
+        return commands, clean_text
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
@@ -184,25 +188,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     monitor.user_chat_id = chat_id
     
     logger.info(f"📩 Msg de {user_id}: {user_text}")
-
-    brain_memory.store(user_text, source="telegram", importance=1)
     
     # --- 1. PIPELINE DETERMINÍSTICO (MODO CLAWBOT) ---
-    commands = InputPipeline.extract_commands(user_text)
+    # Extrai comandos e limpa o texto
+    commands, filtered_text = InputPipeline.extract_and_clean(user_text)
     
-    # Executa comandos extraídos PRIMEIRO (Prioridade)
+    # Executa comandos instantâneos (Lembretes)
     for cmd in commands:
         if cmd['type'] == 'reminder':
             reply = scheduler_skill.set_reminder(chat_id, cmd['minutes'], cmd['msg'])
             await update.message.reply_text(reply)
-    
-    # --- 2. INTELIGÊNCIA LLM (Onde o Clawbot brilha no contexto) ---
-    # Mesmo que tenha executado um comando (ex: lembrete), o texto pode ter OUTRA intenção (ex: agendar).
-    # Passamos para o LLM analisar o "resto" ou o todo.
-    
-    intent = caio_persona.detect_intent(user_text)
-    action = intent.get("action")
-    response_text = ""
+            
+    # Se sobrou texto relevante (ex: "Agendar reunião"), manda pro LLM
+    if len(filtered_text) > 3: # Filtro de ruído
+        logger.info(f"🧠 Enviando para LLM (Texto Filtrado): {filtered_text}")
+        intent = caio_persona.detect_intent(filtered_text)
+        action = intent.get("action")
+        response_text = ""
+    else:
+        # Se só tinha lembrete, paramos aqui
+        return
     
     if action == "config_update":
         key = intent.get("key")
