@@ -1,12 +1,10 @@
 from datetime import datetime, timezone, timedelta
 import os
-import time
 import asyncio
-import re
 from dotenv import load_dotenv
 from loguru import logger
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
 from memory import MemorySystem
 from agent import CaioAgent
@@ -41,17 +39,18 @@ app_instance = None
 async def send_telegram_message_callback(chat_id, text):
     if app_instance:
         try:
-            await app_instance.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+            # Força Markdown simples e remove **
+            clean_text = text.replace("**", "*")
+            await app_instance.bot.send_message(chat_id=chat_id, text=clean_text, parse_mode="Markdown")
         except Exception as e:
             logger.error(f"Erro ao enviar lembrete: {e}")
 
 class ProactiveMonitor:
     def __init__(self):
-        self.user_chat_id = "205798346" # Default
+        self.user_chat_id = "205798346"
         self.alerted_events = set()
 
     async def loop(self, bot):
-        logger.info("🧠 Cérebro Proativo Iniciado...")
         while True:
             await asyncio.sleep(60)
             if not self.user_chat_id: continue
@@ -67,11 +66,11 @@ class ProactiveMonitor:
                         evt_id = evt['id']
                         if evt_id not in self.alerted_events:
                             summary = evt.get('summary', 'Evento')
-                            msg = f"🦁 *Lembrete Proativo*: '{summary}' começa em 15 minutos!"
+                            msg = f"🦁 *Lembrete*: '{summary}' começa em 15 min!"
                             await bot.send_message(chat_id=self.user_chat_id, text=msg, parse_mode="Markdown")
                             self.alerted_events.add(evt_id)
             except Exception as e:
-                logger.error(f"Erro no Monitor: {e}")
+                logger.error(f"Erro Monitor: {e}")
 
 monitor = ProactiveMonitor()
 
@@ -87,45 +86,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     monitor.user_chat_id = chat_id
     
-    logger.info(f"📩 Msg: {user_text}")
     brain_memory.store(user_text, source="telegram")
-
-    # 1. Detectar Intenções (Múltiplas)
     intents = caio_persona.detect_intent(user_text)
     
     for intent in intents:
         action = intent.get("action")
         response_text = ""
 
-        if action == "reminder_set":
-            response_text = scheduler_skill.set_reminder(chat_id, intent.get("minutes"), intent.get("message"))
+        try:
+            if action == "reminder_set":
+                response_text = scheduler_skill.set_reminder(chat_id, intent.get("minutes"), intent.get("message"))
+            
+            elif action == "google_calendar_add":
+                success, msg = google_skills.create_event(intent.get("summary"), intent.get("start_time"), intent.get("end_time"), intent.get("description", ""))
+                response_text = f"✅ {msg}" if success else f"❌ {msg}"
+
+            elif action == "email_check":
+                # Chama o método de listagem de e-mails não lidos
+                response_text = google_skills.list_unread_emails()
+
+            elif action == "brave_search":
+                results = brave_skill.search(intent.get("query"))
+                response_text = caio_persona.generate_message(f"Resultados: {results}", [])
+
+            elif action == "chat":
+                context_data = brain_memory.recall(user_text)
+                response_text = caio_persona.generate_message(user_text, context_data)
+            
+            if response_text:
+                # Limpeza final de segurança para Telegram
+                final_msg = response_text.replace("**", "*")
+                await update.message.reply_text(final_msg, parse_mode="Markdown")
+                brain_memory.store(final_msg, source="caio_response")
         
-        elif action == "google_calendar_add":
-            success, msg = google_skills.create_event(intent.get("summary"), intent.get("start_time"), intent.get("end_time"), intent.get("description", ""))
-            response_text = f"✅ {msg}" if success else f"❌ Erro: {msg}"
-
-        elif action == "brave_search":
-            results = brave_skill.search(intent.get("query"))
-            if results:
-                response_text = caio_persona.generate_message(f"Resuma: {results}", [])
-            else:
-                response_text = "🌐 Não encontrei resultados recentes."
-
-        elif action == "google_drive_upload":
-            success, link = drive_skill.upload_file(intent.get("file_path"))
-            response_text = f"📁 Arquivo no Drive: {link}" if success else f"❌ Erro Drive: {link}"
-
-        elif action == "document_process":
-            content = doc_skill.process(intent.get("path"))
-            response_text = caio_persona.generate_message(f"Analise este documento: {content[:2000]}", [])
-
-        elif action == "chat":
-            context_data = brain_memory.recall(user_text)
-            response_text = caio_persona.generate_message(user_text, context_data)
-
-        if response_text:
-            await update.message.reply_text(response_text, parse_mode="Markdown")
-            brain_memory.store(response_text, source="caio_response")
+        except Exception as e:
+            logger.error(f"Erro ao processar {action}: {e}")
+            await update.message.reply_text(f"⚠️ Tive um problema ao processar: {action}")
 
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
