@@ -138,6 +138,45 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = brain_memory.get_preference("name", "Gleisson")
     await update.message.reply_text(f"Olá {name}! Sou {AGENT_NAME}. Agente 100% Google & Proativo.")
 
+# --- OPENCLAW-STYLE PIPELINE ---
+class InputPipeline:
+    """Processa entrada bruta e extrai intenções determinísticas antes do LLM."""
+    
+    @staticmethod
+    def normalize(text):
+        return text.strip()
+
+    @staticmethod
+    def extract_commands(text):
+        commands = []
+        text = InputPipeline.normalize(text)
+        
+        # 1. Lembretes (High Priority regex)
+        # Captura: "Me lembre daqui a 10 min de X"
+        remind_match = re.search(r"(?:me\s+lembre|avis[ea]|notifique).*(?:daqui\s*a|em)\s*(\d+)\s*(?:minutos?|mins?|m)\s*(?:de|sobre|que)?\s*(.*)", text, re.IGNORECASE)
+        if remind_match:
+            minutes = remind_match.group(1)
+            raw_msg = remind_match.group(2).strip()
+            # Limpeza "uto" e sufixos
+            msg_content = re.sub(r"^(?:utos?|tos?|s)\s+", "", raw_msg, flags=re.IGNORECASE).strip()
+            if not msg_content: 
+                msg_content = f"Lembrete: {text[:50]}..."
+            
+            commands.append({
+                "type": "reminder",
+                "minutes": minutes,
+                "msg": msg_content
+            })
+
+        # 2. Agenda Rápida (Regex simples para detectar intenção, mas deixa dados pro LLM se complexo)
+        # Se tiver "agendar" ou "reunião" E uma hora "XX:XX" ou "XXh", marca flag
+        if re.search(r"(agend[ar]|marc[ar]|reunião|compromisso)", text, re.IGNORECASE):
+             # Não extraímos dados aqui pq calendário é complexo, mas sabemos que é agenda
+             # O Pipeline decide: Se tem lembrete E agenda, executa lembrete e passa o resto pro LLM
+             pass
+
+        return commands
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     user_id = update.effective_user.id
@@ -148,32 +187,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     brain_memory.store(user_text, source="telegram", importance=1)
     
-    # --- ⚡ 0. INTERCEPTADOR DE LEMBRETES (REGEX CORRIGIDO & HUMANIZADO) ---
-    # Captura: "Me lembre daqui a 10 min de sair" -> 10, remover "de", msg="sair"
-    remind_match = re.search(r"(?:me\s+lembre|avis[ea]|notifique).*(?:daqui\s*a|em)\s*(\d+)\s*(?:minutos?|mins?|m)\s*(?:de|sobre|que)?\s*(.*)", user_text, re.IGNORECASE)
+    # --- 1. PIPELINE DETERMINÍSTICO (MODO CLAWBOT) ---
+    commands = InputPipeline.extract_commands(user_text)
     
-    if remind_match:
-        minutes = remind_match.group(1)
-        raw_msg = remind_match.group(2).strip()
-        
-        # Correção do Bug "uto": Remove sufixos acidentais se a regex falhar nos grupos
-        # Se a msg começar com "utos " ou "tos ", remove.
-        msg_content = re.sub(r"^(?:utos?|tos?|s)\s+", "", raw_msg, flags=re.IGNORECASE).strip()
-        
-        if not msg_content: 
-            # Tenta pegar contexto do início se o fim estiver vazio (ex: "Me lembre do bolo daqui a 10 min")
-            if len(user_text) < 100: msg_content = f"Lembrete: {user_text}"
-            else: msg_content = "Verificar pendência."
-
-        # Agenda silenciosamente no sistema
-        scheduler_skill.set_reminder(chat_id, minutes, msg_content)
-        
-        # Resposta Humanizada (Sem return, para permitir chaining com Calendar)
-        await update.message.reply_text(f"⏰ Combinado! Daqui a {minutes} min te aviso sobre: _{msg_content}_")
-        
-        # Continua fluxo para o LLM (pode ser um "Agendar X e me lembrar") 
-
-    # 1. Verificar Intenção
+    # Executa comandos extraídos PRIMEIRO (Prioridade)
+    for cmd in commands:
+        if cmd['type'] == 'reminder':
+            reply = scheduler_skill.set_reminder(chat_id, cmd['minutes'], cmd['msg'])
+            await update.message.reply_text(reply)
+    
+    # --- 2. INTELIGÊNCIA LLM (Onde o Clawbot brilha no contexto) ---
+    # Mesmo que tenha executado um comando (ex: lembrete), o texto pode ter OUTRA intenção (ex: agendar).
+    # Passamos para o LLM analisar o "resto" ou o todo.
+    
     intent = caio_persona.detect_intent(user_text)
     action = intent.get("action")
     response_text = ""
