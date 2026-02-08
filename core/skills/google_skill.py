@@ -9,6 +9,10 @@ from googleapiclient.errors import HttpError
 from loguru import logger
 import datetime
 
+# Cores para terminal
+BLUE = "\033[34m"
+RESET = "\033[0m"
+
 # Escopos necessários
 SCOPES = [
     'https://www.googleapis.com/auth/calendar',
