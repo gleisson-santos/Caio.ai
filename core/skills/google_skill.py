@@ -176,14 +176,18 @@ class GoogleSkill:
         try:
             created_event = self.service_calendar.events().insert(calendarId='primary', body=event_body).execute()
             
-            # Formatação Humana para Confirmação
+            # Formatação Humana Obrigatória (Modo Clawbot)
             try:
                 dt_obj = datetime.datetime.fromisoformat(start_datetime_iso)
-                human_date = dt_obj.strftime("%d/%m às %H:%M")
+                # Formato: 09/02 (Seg) às 14:00
+                weekdays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+                wd = weekdays[dt_obj.weekday()]
+                human_date = dt_obj.strftime(f"%d/%m ({wd}) às %H:%M")
             except:
-                human_date = start_datetime_iso # Fallback
+                # Fallback de Emergência (Tenta limpar a string na força bruta)
+                human_date = str(start_datetime_iso).replace('T', ' ').split('.')[0]
                 
-            return True, f"Agenda: {human_date}" 
+            return True, f"Agendado: **{summary}** para {human_date}" 
             
         except HttpError as error: return False, str(error)
 

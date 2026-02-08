@@ -189,47 +189,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         start_time = intent.get("start_time")
         end_time = intent.get("end_time")
         desc = intent.get("description", "")
+        
         success, msg = google_skills.create_event(summary, start_time, end_time, desc)
+        
         if success:
-             # Bypass LLM/ISO: msg já vem formatada do Skill
-             response_text = f"✅ {msg}"
+             # msg já vem formatada do Skill (Ex: Agendado: Reunião para 09/02 (Seg) às 14:00)
+             # Adicionamos apenas o emoji de check se não tiver
+             response_text = f"✅ {msg}" 
         else:
             response_text = f"❌ Erro Google Agenda: {msg}"
 
-    elif action == "google_calendar_list":
-        response_text = google_skills.list_upcoming_events()
-
-    elif action == "google_calendar_delete":
-        target_desc = intent.get("target_description")
-        found_events = google_skills.find_event(target_desc)
-        if not found_events:
-            response_text = f"🤔 Não encontrei nenhum evento com '{target_desc}'."
-        elif len(found_events) == 1:
-            evt = found_events[0]
-            success, msg = google_skills.delete_event(evt['id'])
-            if success:
-                 response_text = f"🗑️ Cancelei o evento '{evt['summary']}'."
-            else:
-                 response_text = f"❌ Erro ao cancelar: {msg}"
-        else:
-            response_text = "Encontrei múltiplos eventos. Seja mais específico."
-
-    elif action == "email_send":
-        to = intent.get("to")
-        subject = intent.get("subject")
-        body = intent.get("body")
-        success, msg = google_skills.send_email(to, subject, body)
-        response_text = "Email enviado!" if success else f"Erro no envio: {msg}"
-
-    elif action == "email_check":
-        # === GMAIL (READ/CHECK - POWER MODE) ===
-        response_text = google_skills.list_unread_emails(limit=50)
-
     elif action == "web_search":
+        # === BUSCA NA WEB (AGORA FUNCIONA) ===
         query = intent.get("query")
         results = web_skill.search(query)
-        search_context = [{"content": f"RESULTADO DA BUSCA WEB para '{query}':\n" + "\n".join(results)}] if results else []
-        response_text = caio_persona.generate_message(f"Resuma a pesquisa sobre '{query}'.", search_context)
+        
+        if not results:
+            # Fallback para tentar uma busca mais ampla
+            results = web_skill.search(query + " noticias recentes", max_results=5)
+            
+        if not results:
+             response_text = f"🌐 Pesquisei sobre '{query}' mas não encontrei fontes confiáveis no momento."
+        else:
+            # Contexto rico para o LLM
+            search_context = [{"content": f"RESULTADOS RECENTES DA WEB sobre '{query}':\n" + "\n".join(results)}]
+            response_text = caio_persona.generate_message(
+                f"Resuma o que você encontrou sobre '{query}' de forma direta e utile.", 
+                search_context
+            )
 
     elif action == "filesystem_op":
         op = intent.get("operation")
